@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Testeo Completo de Móviles</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f3f4f6;
+            font-family: 'Arial', sans-serif;
+        }
+        #testContainer {
+            display: none;
+        }
+        canvas {
+            border: 1px solid #ccc;
+        }
+        .test-section {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+    <h1 class="text-3xl font-bold mb-8 text-gray-800">Testeo Completo de Móviles</h1>
+    
+    <!-- Botón de Inicio -->
+    <div id="startScreen" class="text-center">
+        <button onclick="startTests()" class="bg-blue-500 text-white px-6 py-3 rounded-lg text-lg hover:bg-blue-600">Iniciar Pruebas</button>
+    </div>
+
+    <!-- Contenedor de Pruebas -->
+    <div id="testContainer" class="test-section bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+        <h2 id="testTitle" class="text-xl font-semibold mb-4 text-gray-700"></h2>
+        <p id="testDescription" class="text-gray-600 mb-4"></p>
+        <div id="testContent"></div>
+        <button id="nextButton" onclick="nextTest()" class="bg-blue-500 text-white px-4 py-2 rounded mt-4 hover:bg-blue-600">Siguiente</button>
+    </div>
+
+    <!-- Canvas para pruebas visuales -->
+    <canvas id="testCanvas" class="hidden mt-6" width="300" height="300"></canvas>
+
+    <script>
+        const tests = [
+            {
+                title: "Test de Vibración",
+                description: "Comprueba si la vibración funciona.",
+                action: () => {
+                    if ('vibrate' in navigator) {
+                        navigator.vibrate(500);
+                        return confirm('¿Sentiste la vibración?');
+                    } else {
+                        alert('No soporta vibración.');
+                        return false;
+                    }
+                }
+            },
+            {
+                title: "Test de Sonido",
+                description: "Reproduce un sonido para verificar los altavoces.",
+                action: async () => {
+                    const audio = new Audio('https://www.soundjay.com/buttons/beep-01a.mp3');
+                    try {
+                        await audio.play();
+                        return confirm('¿Escuchaste el sonido?');
+                    } catch {
+                        alert('Error al reproducir sonido.');
+                        return false;
+                    }
+                }
+            },
+            {
+                title: "Test de Pixeles Muertos",
+                description: "Muestra colores sólidos para detectar pixeles defectuosos.",
+                action: async () => {
+                    const canvas = document.getElementById('testCanvas');
+                    canvas.classList.remove('hidden');
+                    canvas.width = window.innerWidth;
+                    canvas.height = window.innerHeight;
+                    const ctx = canvas.getContext('2d');
+                    const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFFFFF', '#000000'];
+                    for (let color of colors) {
+                        ctx.fillStyle = color;
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                    }
+                    canvas.classList.add('hidden');
+                    return confirm('¿Viste algún píxel defectuoso?') ? false : true;
+                }
+            },
+            {
+                title: "Test de Pantalla Táctil",
+                description: "Dibuja en la pantalla para verificar la respuesta táctil.",
+                action: async () => {
+                    const canvas = document.getElementById('testCanvas');
+                    canvas.classList.remove('hidden');
+                    canvas.width = 300;
+                    canvas.height = 300;
+                    const ctx = canvas.getContext('2d');
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 5;
+                    let isDrawing = false;
+
+                    return new Promise(resolve => {
+                        canvas.addEventListener('touchstart', (e) => {
+                            isDrawing = true;
+                            ctx.beginPath();
+                            const touch = e.touches[0];
+                            ctx.moveTo(touch.clientX - canvas.offsetLeft, touch.clientY - canvas.offsetTop);
+                            e.preventDefault();
+                        });
+                        canvas.addEventListener('touchmove', (e) => {
+                            if (isDrawing) {
+                                const touch = e.touches[0];
+                                ctx.lineTo(touch.clientX - canvas.offsetLeft, touch.clientY - canvas.offsetTop);
+                                ctx.stroke();
+                            }
+                            e.preventDefault();
+                        });
+                        canvas.addEventListener('touchend', () => {
+                            isDrawing = false;
+                            canvas.classList.add('hidden');
+                            resolve(confirm('¿Pudiste dibujar correctamente?'));
+                        }, { once: true });
+                    });
+                }
+            },
+            {
+                title: "Test de Acelerómetro",
+                description: "Mueve tu dispositivo para verificar el acelerómetro.",
+                action: () => {
+                    return new Promise(resolve => {
+                        if (window.DeviceMotionEvent) {
+                            window.addEventListener('devicemotion', (event) => {
+                                const acc = event.acceleration;
+                                resolve(confirm(`Aceleración: x=${acc.x.toFixed(2)}, y=${acc.y.toFixed(2)}, z=${acc.z.toFixed(2)}. ¿Funcionó?`));
+                            }, { once: true });
+                        } else {
+                            alert('No soporta acelerómetro.');
+                            resolve(false);
+                        }
+                    });
+                }
+            },
+            {
+                title: "Test de Giroscopio",
+                description: "Gira tu dispositivo para verificar el giroscopio.",
+                action: () => {
+                    return new Promise(resolve => {
+                        if (window.DeviceOrientationEvent) {
+                            window.addEventListener('deviceorientation', (event) => {
+                                resolve(confirm(`Orientación: α=${event.alpha.toFixed(2)}, β=${event.beta.toFixed(2)}, γ=${event.gamma.toFixed(2)}. ¿Funcionó?`));
+                            }, { once: true });
+                        } else {
+                            alert('No soporta giroscopio.');
+                            resolve(false);
+                        }
+                    });
+                }
+            },
+            {
+                title: "Test de Cámara Frontal",
+                description: "Accede a la cámara frontal para verificar su funcionamiento.",
+                action: async () => {
+                    const video = document.createElement('video');
+                    video.autoplay = true;
+                    document.getElementById('testContent').appendChild(video);
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                        video.srcObject = stream;
+                        const result = confirm('¿Ves la imagen de la cámara frontal?');
+                        stream.getTracks().forEach(track => track.stop());
+                        video.remove();
+                        return result;
+                    } catch {
+                        alert('Error al acceder a la cámara frontal.');
+                        video.remove();
+                        return false;
+                    }
+                }
+            },
+            {
+                title: "Test de Cámara Trasera",
+                description: "Accede a la cámara trasera para verificar su funcionamiento.",
+                action: async () => {
+                    const video = document.createElement('video');
+                    video.autoplay = true;
+                    document.getElementById('testContent').appendChild(video);
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                        video.srcObject = stream彼此
+
+                        const result = confirm('¿Ves la imagen de la cámara trasera?');
+                        stream.getTracks().forEach(track => track.stop());
+                        video.remove();
+                        return result;
+                    } catch {
+                        alert('Error al acceder a la cámara trasera.');
+                        video.remove();
+                        return false;
+                    }
+                }
+            },
+            {
+                title: "Test de Micrófono",
+                description: "Graba un audio breve para verificar el micrófono.",
+                action: async () => {
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        const recorder = new MediaRecorder(stream);
+                        const chunks = [];
+                        recorder.ondataavailable = e => chunks.push(e.data);
+                        recorder.start();
+                        await new Promise(resolve => setTimeout(resolve, 3000));
+                        recorder.stop();
+                        stream.getTracks().forEach(track => track.stop());
+                        return confirm('¿Grabación completada. Funcionó el micrófono?');
+                    } catch {
+                        alert('Error al acceder al micrófono.');
+                        return false;
+                    }
+                }
+            },
+            {
+                title: "Test de Lector de Huellas",
+                description: "Intenta desbloquear con tu huella dactilar.",
+                action: () => {
+                    if ('PublicKeyCredential' in window) {
+                        return confirm('Toca el sensor de huellas. ¿Funcionó?');
+                    } else {
+                        alert('No soporta autenticación biométrica.');
+                        return false;
+                    }
+                }
+            },
+            {
+                title: "Test de Brillo de Pantalla",
+                description: "Ajusta el brillo de la pantalla al máximo y mínimo.",
+                action: () => {
+                    return confirm('Ajusta el brillo al máximo y luego al mínimo. ¿Funcionó?');
+                }
+            },
+            {
+                title: "Test de Botones Físicos",
+                description: "Presiona los botones de encendido y volumen.",
+                action: () => {
+                    return confirm('Presiona los botones de encendido, volumen arriba y abajo. ¿Funcionaron?');
+                }
+            },
+            {
+                title: "Test de Conexión Wi-Fi",
+                description: "Verifica si estás conectado a una red Wi-Fi.",
+                action: () => {
+                    return navigator.onLine ? confirm('¿Estás conectado a Wi-Fi?') : false;
+                }
+            },
+            {
+                title: "Test de Conexión de Datos Móviles",
+                description: "Verifica si los datos móviles funcionan.",
+                action: () => {
+                    return navigator.onLine ? confirm('¿Los datos móviles funcionan?') : false;
+                }
+            },
+            {
+                title: "Test de GPS",
+                description: "Obtén tu ubicación actual.",
+                action: () => {
+                    return new Promise(resolve => {
+                        navigator.geolocation.getCurrentPosition(
+                            () => resolve(confirm('¿Se obtuvo la ubicación correctamente?')),
+                            () => {
+                                alert('Error al acceder al GPS.');
+                                resolve(false);
+                            }
+                        );
+                    });
+                }
+            },
+            {
+                title: "Test de Bluetooth",
+                description: "Intenta conectar un dispositivo Bluetooth.",
+                action: () => {
+                    return confirm('Intenta conectar un dispositivo Bluetooth. ¿Funcionó?');
+                }
+            },
+            {
+                title: "Test de Carga",
+                description: "Conecta el cargador y verifica si carga.",
+                action: () => {
+                    return confirm('Conecta el cargador. ¿Está cargando?');
+                }
+            },
+            {
+                title: "Test de Auriculares",
+                description: "Conecta auriculares y reproduce un sonido.",
+                action: async () => {
+                    const audio = new Audio('https://www.soundjay.com/buttons/beep-01a.mp3');
+                    try {
+                        await audio.play();
+                        return confirm('Conecta auriculares. ¿Escuchaste el sonido?');
+                    } catch {
+                        alert('Error al reproducir sonido.');
+                        return false;
+                    }
+                }
+            },
+            {
+                title: "Test de Puerto USB",
+                description: "Conecta un dispositivo USB o cable.",
+                action: () => {
+                    return confirm('Conecta un cable USB o dispositivo. ¿Funcionó?');
+                }
+            },
+            {
+                title: "Test de Notificaciones",
+                description: "Activa una notificación de prueba.",
+                action: async () => {
+                    if (Notification.permission === 'granted') {
+                        new Notification('Prueba de Notificación');
+                        return confirm('¿Viste la notificación?');
+                    } else {
+                        const permission = await Notification.requestPermission();
+                        if (permission === 'granted') {
+                            new Notification('Prueba de Notificación');
+                            return confirm('¿Viste la notificación?');
+                        } else {
+                            alert('Permiso de notificaciones denegado.');
+                            return false;
+                        }
+                    }
+                }
+            },
+            {
+                title: "Test de Linterna",
+                description: "Enciende y apaga la linterna.",
+                action: () => {
+                    return confirm('Enciende y apaga la linterna. ¿Funcionó?');
+                }
+            }
+        ];
+
+        let currentTest = 0;
+        const results = [];
+
+        function startTests() {
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('testContainer').style.display = 'block';
+            showTest();
+        }
+
+        async function showTest() {
+            if (currentTest < tests.length) {
+                const test = tests[currentTest];
+                document.getElementById('testTitle').textContent = test.title;
+                document.getElementById('testDescription').textContent = test.description;
+                document.getElementById('testContent').innerHTML = '';
+                document.getElementById('nextButton').disabled = true;
+                const passed = await test.action();
+                results.push({ title: test.title, passed });
+                document.getElementById('nextButton').disabled = false;
+            } else {
+                showResults();
+            }
+        }
+
+        function nextTest() {
+            currentTest++;
+            showTest();
+        }
+
+        function showResults() {
+            document.getElementById('testContainer').innerHTML = `
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">Resultados</h2>
+                <ul class="text-gray-600">
+                    ${results.map(result => `
+                        <li class="mb-ostratégico 2">${result.title}: ${result.passed ? '✅ Aprobado' : '❌ Fallido'}</li>
+                    `).join('')}
+                </ul>
+                <button onclick="location.reload()" class="bg-blue-500 text-white px-4 py-2 rounded mt-4 hover:bg-blue-600">Reiniciar</button>
+            `;
+        }
+    </script>
+</body>
+</html>
