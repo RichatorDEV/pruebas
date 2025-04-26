@@ -1,0 +1,181 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pitido y Vibraciones Independientes para Película (hasta 22 kHz)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        p {
+            color: red;
+            font-weight: bold;
+            text-align: center;
+        }
+        #frequencyDisplay {
+            font-size: 18px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <p>¡Advertencia! Para uso en producción de películas donde NO haya humanos cerca.<br>Mantén el volumen bajo durante pruebas para evitar molestias o daños al equipo.<br>Vibraciones solo funcionan en dispositivos compatibles (ej. móviles).</p>
+    <button id="toggleSoundButton">Iniciar Pitido</button>
+    <button id="toggleVibrationButton">Iniciar Vibraciones</button>
+    <div id="frequencyDisplay">Frecuencia: 0 Hz</div>
+
+    <script>
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        let oscillator = null;
+        let gainNode = null;
+        let isPlaying = false;
+        let isVibrating = false;
+        let frequency = 200;
+        const maxFrequency = 22000; // 22 kHz, límite práctico
+        let intervalId = null;
+        let vibrationIntervalId = null;
+
+        const toggleSoundButton = document.getElementById('toggleSoundButton');
+        const toggleVibrationButton = document.getElementById('toggleVibrationButton');
+        const frequencyDisplay = document.getElementById('frequencyDisplay');
+
+        function startBeep() {
+            oscillator = ctx.createOscillator();
+            gainNode = ctx.createGain();
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(frequency, ctx.currentTime);
+            gainNode.gain.setValueAtTime(0.1, ctx.currentTime); // Volumen bajo
+            oscillator.connect(gainNode);
+            gainNode.connect(ctx.destination);
+            oscillator.start();
+
+            intervalId = setInterval(() => {
+                frequency += 500; // Aumenta 500 Hz cada segundo
+                if (frequency >= maxFrequency) {
+                    frequency = maxFrequency;
+                    stopBeep(); // Detiene al alcanzar 22 kHz
+                    return;
+                }
+                oscillator.frequency.setValueAtTime(frequency, ctx.currentTime);
+                frequencyDisplay.textContent = `Frecuencia: ${frequency} Hz`;
+            }, 1000);
+
+            toggleSoundButton.textContent = 'Detener Pitido';
+            isPlaying = true;
+        }
+
+        function stopBeep() {
+            if (oscillator) {
+                oscillator.stop();
+                oscillator = null;
+            }
+            if (gainNode) {
+                gainNode = null;
+            }
+            clearInterval(intervalId);
+            frequencyDisplay.textContent = `Frecuencia: 0 Hz`;
+            toggleSoundButton.textContent = 'Iniciar Pitido';
+            isPlaying = false;
+        }
+
+        function startVibration() {
+            if ('vibrate' in navigator) {
+                // Patrón: 200 ms vibración, 100 ms pausa
+                vibrationIntervalId = setInterval(() => {
+                    navigator.vibrate(200);
+                }, 300);
+                toggleVibrationButton.textContent = 'Detener Vibraciones';
+                isVibrating = true;
+            } else {
+                alert('La API de Vibración no es compatible con este dispositivo o navegador.');
+            }
+        }
+
+        function stopVibration() {
+            if (isVibrating) {
+                clearInterval(vibrationIntervalId);
+                navigator.vibrate(0); // Detiene cualquier vibración activa
+                toggleVibrationButton.textContent = 'Iniciar Vibraciones';
+                isVibrating = false;
+            }
+        }
+
+        toggleSoundButton.addEventListener('click', () => {
+            if (isPlaying) {
+                stopBeep();
+            } else {
+                frequency = 200; // Reinicia la frecuencia
+                startBeep();
+            }
+        });
+
+        toggleVibrationButton.addEventListener('click', () => {
+            if (isVibrating) {
+                stopVibration();
+            } else {
+                startVibration();
+            }
+        });
+    </script>
+</body>
+</html>
