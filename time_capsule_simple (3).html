@@ -1,0 +1,299 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Time Capsule Vault - Unlocked VALLE</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background: linear-gradient(135deg, #1a202c, #2d3748);
+      min-height: 100vh;
+    }
+    .capsule-card {
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .capsule-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+    }
+    .btn-primary {
+      background: linear-gradient(to right, #4f46e5, #7c3aed);
+      transition: transform 0.2s ease;
+    }
+    .btn-primary:hover {
+      transform: scale(1.05);
+    }
+    iframe, video {
+      width: 100%;
+      height: 200px;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body class="text-white">
+  <div class="container mx-auto p-6">
+    <h1 class="text-5xl font-extrabold text-center mb-8 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600">
+      Time Capsule Vault
+    </h1>
+    <p class="text-center mb-6 text-lg opacity-80">¡Guarda momentos y descúbrelos en el futuro!</p>
+    <div class="flex flex-col lg:flex-row gap-6">
+      <!-- Editor de cápsulas -->
+      <div class="w-full lg:w-1/3 bg-gray-800/80 backdrop-blur-md p-6 rounded-2xl shadow-xl">
+        <h2 class="text-3xl font-bold mb-6 text-blue-300">Crea una Cápsula</h2>
+        <select id="type" class="w-full p-3 mb-4 bg-gray-700/50 rounded-lg border border-gray-600 focus:ring-2 focus:ring-blue-500">
+          <option value="text">Texto</option>
+          <option value="image">Imagen (URL)</option>
+          <option value="video">Video (URL o YouTube)</option>
+        </select>
+        <textarea
+          id="content"
+          class="w-full p-3 mb-4 bg-gray-700/50 rounded-lg border border-gray-600 focus:ring-2 focus:ring-blue-500"
+          placeholder="Escribe algo épico..."
+        ></textarea>
+        <input
+          id="content-url"
+          type="text"
+          class="w-full p-3 mb-4 bg-gray-700/50 rounded-lg border border-gray-600 focus:ring-2 focus:ring-blue-500 hidden"
+          placeholder="Pega un link de YouTube o un video directo..."
+        />
+        <input
+          id="creatorName"
+          type="text"
+          class="w-full p-3 mb-4 bg-gray-700/50 rounded-lg border border-gray-600 focus:ring-2 focus:ring-blue-500"
+          placeholder="Tu nombre (ej. Alex)"
+        />
+        <input
+          id="unlockDate"
+          type="datetime-local"
+          class="w-full p-3 mb-4 bg-gray-700/50 rounded-lg border border-gray-600 focus:ring-2 focus:ring-blue-500"
+        />
+        <select id="recipient" class="w-full p-3 mb-4 bg-gray-700/50 rounded-lg border border-gray-600 focus:ring-2 focus:ring-blue-500">
+          <option value="public">Público</option>
+          <option value="private">Solo para mí</option>
+          <option value="surprise">Sorpresa Anónima</option>
+        </select>
+        <label class="flex items-center mb-4">
+          <input id="anonymous" type="checkbox" class="mr-2 h-5 w-5 text-blue-500" />
+          <span class="text-sm">Enviar como anónimo</span>
+        </label>
+        <button
+          id="createCapsule"
+          class="w-full p-3 btn-primary text-white rounded-lg font-semibold"
+        >
+          ¡Encapsular!
+        </button>
+      </div>
+      <!-- Lista de cápsulas -->
+      <div class="w-full lg:w-2/3 bg-gray-800/80 backdrop-blur-md p-6 rounded-2xl shadow-xl">
+        <h2 class="text-3xl font-bold mb-6 text-blue-300">Cápsulas del Tiempo</h2>
+        <div id="capsuleList" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    // Gestionar visibilidad de inputs según tipo y anonimato
+    const typeSelect = document.getElementById("type");
+    const contentText = document.getElementById("content");
+    const contentUrl = document.getElementById("content-url");
+    const creatorName = document.getElementById("creatorName");
+    const anonymousCheckbox = document.getElementById("anonymous");
+
+    typeSelect.addEventListener("change", () => {
+      contentText.classList.toggle("hidden", typeSelect.value !== "text");
+      contentUrl.classList.toggle("hidden", typeSelect.value === "text");
+    });
+    anonymousCheckbox.addEventListener("change", () => {
+      creatorName.classList.toggle("hidden", anonymousCheckbox.checked);
+      if (anonymousCheckbox.checked) creatorName.value = "";
+    });
+    contentText.classList.remove("hidden"); // Mostrar textarea por defecto
+
+    // Cargar cápsulas desde LocalStorage
+    let capsules = JSON.parse(localStorage.getItem("capsules")) || [];
+
+    // Extraer ID de video de YouTube
+    function getYouTubeId(url) {
+      const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+      const match = url.match(regex);
+      return match ? match[1] : null;
+    }
+
+    // Renderizar una sola cápsula
+    function renderCapsule(capsule, container) {
+      const div = document.createElement("div");
+      div.className = "capsule-card bg-gray-700/50 p-5 rounded-xl border border-gray-600";
+      div.dataset.id = capsule.id; // Para identificar la cápsula
+      const isYouTube = capsule.type === "video" && getYouTubeId(capsule.content);
+      div.innerHTML = `
+        <div class="flex items-center mb-2">
+          <span class="text-sm font-medium text-gray-300">Creador: ${capsule.creator}</span>
+        </div>
+        <p class="text-sm text-gray-400 mb-2">Desbloqueo: ${new Date(capsule.unlockDate).toLocaleString()}</p>
+        ${
+          capsule.unlocked
+            ? capsule.type === "text"
+              ? `<p class="text-lg font-semibold text-blue-200">${capsule.content}</p>`
+              : capsule.type === "image"
+              ? `<img src="${capsule.content}" alt="Capsule" class="w-full h-48 object-cover mt-2 rounded-lg" />`
+              : isYouTube
+              ? `<iframe src="https://www.youtube.com/embed/${getYouTubeId(capsule.content)}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
+              : `<video src="${capsule.content}" controls class="w-full h-48 mt-2 rounded-lg"></video>`
+            : '<p class="text-lg font-semibold text-purple-300">¡Aún no se desbloquea!</p>'
+        }
+      `;
+      container.appendChild(div);
+    }
+
+    // Renderizar cápsulas
+    function renderCapsules() {
+      const capsuleList = document.getElementById("capsuleList");
+      const now = new Date();
+      const visibleCapsules = capsules.filter(
+        (capsule) =>
+          capsule.recipient === "public" ||
+          (capsule.recipient === "private" && capsule.creator === capsule.creatorName) ||
+          (capsule.recipient === "surprise" && capsule.unlocked)
+      );
+
+      if (visibleCapsules.length === 0) {
+        capsuleList.innerHTML = '<p class="text-center text-gray-400">¡No hay cápsulas! Crea una ahora.</p>';
+        return;
+      }
+
+      // Mantener cápsulas desbloqueadas ya renderizadas
+      const existingIds = Array.from(capsuleList.querySelectorAll(".capsule-card")).map(
+        (card) => parseInt(card.dataset.id)
+      );
+      const capsulesToRender = visibleCapsules.filter(
+        (capsule) => !capsule.unlocked || !existingIds.includes(capsule.id)
+      );
+
+      // Renderizar solo cápsulas nuevas o bloqueadas
+      capsulesToRender.forEach((capsule) => {
+        if (!capsule.unlocked) {
+          const existingCard = capsuleList.querySelector(`[data-id="${capsule.id}"]`);
+          if (existingCard) existingCard.remove(); // Actualizar cápsulas bloqueadas
+        }
+        renderCapsule(capsule, capsuleList);
+      });
+    }
+
+    // Crear una nueva cápsula
+    document.getElementById("createCapsule").addEventListener("click", () => {
+      const type = typeSelect.value;
+      const content = type === "text" ? contentText.value : contentUrl.value;
+      const unlockDate = document.getElementById("unlockDate").value;
+      const recipient = document.getElementById("recipient").value;
+      const isAnonymous = anonymousCheckbox.checked;
+      const creatorNameValue = isAnonymous ? "Anónimo" : creatorName.value.trim() || "Usuario " + Math.floor(Math.random() * 1000);
+
+      if (!content || !unlockDate) {
+        alert("¡Completa el contenido y la fecha de desbloqueo!");
+        return;
+      }
+      if (!isAnonymous && !creatorName.value.trim()) {
+        alert("¡Ingresa tu nombre o marca 'Enviar como anónimo'!");
+        return;
+      }
+
+      const newCapsule = {
+        id: capsules.length + 1,
+        content,
+        type,
+        unlockDate,
+        recipient,
+        creator: creatorNameValue,
+        unlocked: false,
+        createdAt: new Date().toISOString(),
+        unlockTime: null,
+      };
+
+      capsules.push(newCapsule);
+      localStorage.setItem("capsules", JSON.stringify(capsules));
+      contentText.value = "";
+      contentUrl.value = "";
+      creatorName.value = "";
+      document.getElementById("unlockDate").value = "";
+      anonymousCheckbox.checked = false;
+      creatorName.classList.remove("hidden");
+      renderCapsules();
+    });
+
+    // Verificar desbloqueos y borrado automático
+    setInterval(() => {
+      const now = new Date();
+      let needsRender = false;
+
+      // Verificar desbloqueos
+      capsules = capsules.map((capsule) => {
+        if (new Date(capsule.unlockDate) <= now && !capsule.unlocked) {
+          needsRender = true;
+          return { ...capsule, unlocked: true, unlockTime: now.toISOString() };
+        }
+        return capsule;
+      });
+
+      // Verificar borrado tras 24 horas
+      capsules = capsules.filter((capsule) => {
+        if (capsule.unlocked && capsule.unlockTime) {
+          const timeSinceUnlock = now - new Date(capsule.unlockTime);
+          if (timeSinceUnlock >= 24 * 60 * 60 * 1000) {
+            needsRender = true;
+            return false; // Eliminar cápsula
+          }
+        }
+        return true;
+      });
+
+      // Actualizar solo si es necesario
+      if (needsRender) {
+        localStorage.setItem("capsules", JSON.stringify(capsules));
+        renderCapsules();
+      }
+    }, 1000);
+
+    // Renderizar al cargar la página
+    renderCapsules();
+  </script>
+</body>
+</html>
