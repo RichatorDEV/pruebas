@@ -72,21 +72,45 @@
             },
             {
                 title: "Test de Pixeles Muertos",
-                description: "Muestra colores sólidos para detectar pixeles defectuosos.",
+                description: "Pasa el dedo por cada píxel. Los píxeles tocados se pintarán de azul. Asegúrate de cubrir toda la pantalla.",
                 action: async () => {
                     const canvas = document.getElementById('testCanvas');
                     canvas.classList.remove('hidden');
                     canvas.width = window.innerWidth;
                     canvas.height = window.innerHeight;
                     const ctx = canvas.getContext('2d');
-                    const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFFFFF', '#000000'];
-                    for (let color of colors) {
-                        ctx.fillStyle = color;
-                        ctx.fillRect(0, 0, canvas.width, canvas.height);
-                        await new Promise(resolve => setTimeout(resolve, 2000));
-                    }
-                    canvas.classList.add('hidden');
-                    return confirm('¿Viste algún píxel defectuoso?') ? false : true;
+                    
+                    // Inicializa la pantalla en negro
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                    let touchedPixels = new Set();
+
+                    return new Promise(resolve => {
+                        function handleTouch(e) {
+                            e.preventDefault();
+                            const touch = e.touches[0];
+                            const x = Math.floor(touch.clientX);
+                            const y = Math.floor(touch.clientY);
+                            
+                            // Pinta un área pequeña alrededor del toque
+                            ctx.fillStyle = '#0000FF'; // Azul
+                            ctx.fillRect(x - 5, y - 5, 10, 10);
+                            
+                            // Registra el píxel tocado
+                            touchedPixels.add(`${x},${y}`);
+                        }
+
+                        canvas.addEventListener('touchstart', handleTouch);
+                        canvas.addEventListener('touchmove', handleTouch);
+                        canvas.addEventListener('touchend', () => {
+                            canvas.removeEventListener('touchstart', handleTouch);
+                            canvas.removeEventListener('touchmove', handleTouch);
+                            canvas.classList.add('hidden');
+                            const coverage = (touchedPixels.size / (canvas.width * canvas.height)) * 100;
+                            resolve(confirm(`Cubriste aproximadamente ${coverage.toFixed(2)}% de la pantalla. ¿Viste algún píxel defectuoso?`) ? false : true);
+                        }, { once: true });
+                    });
                 }
             },
             {
@@ -189,8 +213,7 @@
                     document.getElementById('testContent').appendChild(video);
                     try {
                         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                        video.srcObject = stream彼此
-
+                        video.srcObject = stream;
                         const result = confirm('¿Ves la imagen de la cámara trasera?');
                         stream.getTracks().forEach(track => track.stop());
                         video.remove();
@@ -307,7 +330,7 @@
             },
             {
                 title: "Test de Puerto USB",
-                description: "Conecta un dispositivo USB o cable.",
+                description: "Conecta un cable USB o dispositivo.",
                 action: () => {
                     return confirm('Conecta un cable USB o dispositivo. ¿Funcionó?');
                 }
@@ -356,6 +379,13 @@
                 document.getElementById('testDescription').textContent = test.description;
                 document.getElementById('testContent').innerHTML = '';
                 document.getElementById('nextButton').disabled = true;
+                
+                // Mover el canvas encima del texto para el test de pixeles
+                if (test.title === "Test de Pixeles Muertos") {
+                    const canvas = document.getElementById('testCanvas');
+                    document.getElementById('testContainer').insertBefore(canvas, document.getElementById('testTitle'));
+                }
+
                 const passed = await test.action();
                 results.push({ title: test.title, passed });
                 document.getElementById('nextButton').disabled = false;
@@ -374,7 +404,7 @@
                 <h2 class="text-xl font-semibold mb-4 text-gray-700">Resultados</h2>
                 <ul class="text-gray-600">
                     ${results.map(result => `
-                        <li class="mb-ostratégico 2">${result.title}: ${result.passed ? '✅ Aprobado' : '❌ Fallido'}</li>
+                        <li class="mb-2">${result.title}: ${result.passed ? '✅ Aprobado' : '❌ Fallido'}</li>
                     `).join('')}
                 </ul>
                 <button onclick="location.reload()" class="bg-blue-500 text-white px-4 py-2 rounded mt-4 hover:bg-blue-600">Reiniciar</button>
