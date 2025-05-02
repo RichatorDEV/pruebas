@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caos de Pestañas para Película</title>
+    <style>
+        body {
+            margin: 0;
+            background: #000;
+            color: #ff0;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            user-select: none;
+            overflow: hidden;
+        }
+        #main-message {
+            font-size: 72px;
+            margin-top: 15%;
+            text-shadow: 0 0 20px #f00;
+            animation: pulse 0.5s infinite;
+        }
+        .troll-text {
+            position: absolute;
+            font-size: 36px;
+            color: #0ff;
+            text-shadow: 0 0 15px #f0f;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .error-box {
+            position: absolute;
+            background: #00f;
+            color: #fff;
+            padding: 15px;
+            border: 3px solid #fff;
+            font-size: 28px;
+            z-index: 20;
+        }
+        #crash-screen {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0000ff;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            padding-top: 20%;
+            font-size: 24px;
+            z-index: 1000;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.4); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div id="main-message">¡PESTAÑAS SIN LÍMITE!</div>
+    <div id="crash-screen">
+        <h1>*** ERROR CRÍTICO DEL SISTEMA ***</h1>
+        <p>El sistema ha detectado una sobrecarga masiva.</p>
+        <p>Código de error: 0xDEADBEEF</p>
+        <p>Por favor, reinicie el sistema.</p>
+    </div>
+    <script>
+        const trollMessages = [
+            "¡JAJA! ¡MÁS PESTAÑAS!",
+            "¡SISTEMA EN CAOS!",
+            "¡NO PUEDES PARARLO!",
+            "¡TROLLEADO AL MÁXIMO!",
+            "¡ERROR FATAL!",
+            "¡PESTAÑAS POR TODAS PARTES!",
+            "¡COLAPSO INMINENTE!"
+        ];
+
+        const urls = [
+            "https://www.google.com",
+            "https://www.youtube.com",
+            "https://www.wikipedia.org",
+            "https://i.imgur.com/7DRN.png", // Trollface
+            "https://i.imgur.com/8I3gS.jpg", // Doge
+            "https://www.myinstants.com/instant/trollolol/",
+            "https://i.imgur.com/QtnI1.jpg" // Rickroll image
+        ];
+
+        // Crear mensajes troll
+        function createTrollText() {
+            try {
+                const div = document.createElement('div');
+                div.classList.add('troll-text');
+                div.innerText = trollMessages[Math.floor(Math.random() * trollMessages.length)];
+                div.style.left = Math.random() * window.innerWidth + 'px';
+                div.style.top = Math.random() * window.innerHeight + 'px';
+                div.style.transform = `rotate(${Math.random() * 360}deg)`;
+                document.body.appendChild(div);
+                setTimeout(() => {
+                    div.style.opacity = '0';
+                    div.style.transform += 'scale(2)';
+                    setTimeout(() => div.remove(), 500);
+                }, 600);
+            } catch (e) {
+                console.error('Error creating troll text:', e);
+            }
+        }
+
+        // Crear falsa alerta de error
+        function createErrorBox() {
+            try {
+                const div = document.createElement('div');
+                div.classList.add('error-box');
+                div.innerText = `¡ERROR! Código: ${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+                div.style.left = Math.random() * (window.innerWidth - 200) + 'px';
+                div.style.top = Math.random() * (window.innerHeight - 100) + 'px';
+                document.body.appendChild(div);
+                setTimeout(() => div.remove(), 1500);
+            } catch (e) {
+                console.error('Error creating error box:', e);
+            }
+        }
+
+        // Abrir pestañas/pop-ups
+        let tabCount = 0;
+        const maxTabs = 30;
+        const openTabs = new Set();
+
+        function openChaosTab() {
+            if (tabCount >= maxTabs) return;
+            try {
+                tabCount++;
+                const url = urls[Math.floor(Math.random() * urls.length)];
+                const tab = window.open(url, '_blank');
+                if (tab) {
+                    openTabs.add(tab);
+                    tab.document.title = "¡TROLLEADO!";
+                    // Mover ventana (si es pop-up)
+                    const moveInterval = setInterval(() => {
+                        try {
+                            tab.moveTo(
+                                Math.random() * (screen.width - 300),
+                                Math.random() * (screen.height - 300)
+                            );
+                        } catch (e) {}
+                    }, 200);
+                    // Detectar cierre
+                    tab.onunload = () => {
+                        openTabs.delete(tab);
+                        tabCount--;
+                        clearInterval(moveInterval);
+                    };
+                } else {
+                    tabCount--; // Bloqueado
+                }
+            } catch (e) {
+                console.error('Error opening tab:', e);
+                tabCount--;
+            }
+        }
+
+        // Mantener pestañas abiertas
+        let isRunning = true;
+        setInterval(() => {
+            if (!isRunning) return;
+            try {
+                if (tabCount < maxTabs) {
+                    // Intentar abrir varias pestañas por ciclo
+                    for (let i = 0; i < 3; i++) {
+                        openChaosTab();
+                    }
+                }
+                createTrollText();
+                if (Math.random() > 0.7) createErrorBox();
+                const msg = document.getElementById('main-message');
+                msg.innerText = trollMessages[Math.floor(Math.random() * trollMessages.length)];
+                document.body.style.background = `hsl(${Math.random() * 360}, 100%, 20%)`;
+            } catch (e) {
+                console.error('Error in interval:', e);
+            }
+        }, 50); // Extremadamente rápido (browsers lo limitarán)
+
+        // Simular crash después de 15 segundos
+        setTimeout(() => {
+            try {
+                isRunning = false;
+                document.getElementById('crash-screen').style.display = 'block';
+                document.getElementById('main-message').style.display = 'none';
+                document.querySelectorAll('.troll-text, .error-box').forEach(el => el.remove());
+                openTabs.forEach(tab => {
+                    try { tab.close(); } catch (e) {}
+                });
+                tabCount = 0;
+            } catch (e) {
+                console.error('Error triggering crash screen:', e);
+            }
+        }, 15000);
+
+        // Efectos de interacción
+        document.addEventListener('click', () => {
+            if (!isRunning) return;
+            createTrollText();
+            createErrorBox();
+            openChaosTab();
+        });
+
+        document.addEventListener('keydown', () => {
+            if (!isRunning) return;
+            createTrollText();
+            createErrorBox();
+            openChaosTab();
+        });
+
+        // Iniciar caos
+        try {
+            for (let i = 0; i < 10; i++) {
+                openChaosTab();
+            }
+        } catch (e) {
+            console.error('Error starting chaos:', e);
+        }
+    </script>
+</body>
+</html>
