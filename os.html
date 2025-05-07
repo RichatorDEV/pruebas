@@ -1,0 +1,246 @@
+<!DOCTYPE html><html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>macOS Web</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; }body {
+  background: linear-gradient(135deg, #1a1a1a, #333);
+  height: 100vh;
+  overflow: hidden;
+}
+
+.dock {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 10px;
+  display: flex;
+  gap: 15px;
+  z-index: 1000;
+}
+
+.dock img {
+  width: 50px;
+  height: 50px;
+  border-radius: 15px;
+  transition: transform 0.2s;
+  cursor: pointer;
+}
+
+.dock img:hover {
+  transform: scale(1.2);
+}
+
+.window {
+  width: 800px;
+  height: 500px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  position: absolute;
+  top: 60px;
+  left: 60px;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 500;
+  resize: both;
+}
+
+.window-header {
+  background: #e0e0e0;
+  padding: 5px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: move;
+}
+
+.window-header .controls {
+  display: flex;
+  gap: 5px;
+}
+
+.window-header .btn {
+  width: 15px; height: 15px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.close-btn { background: red; }
+.min-btn { background: orange; }
+.max-btn { background: green; }
+
+iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  flex-grow: 1;
+}
+
+.terminal-body {
+  padding: 10px;
+  background: #000;
+  color: #0f0;
+  font-family: monospace;
+  height: 100%;
+  overflow-y: auto;
+}
+
+input.terminal-input {
+  width: 100%;
+  background: #000;
+  border: none;
+  color: #0f0;
+  font-family: monospace;
+  font-size: 1em;
+}
+
+.browser-input {
+  padding: 5px;
+  border: none;
+  width: 100%;
+}
+
+  </style>
+</head>
+<body>
+  <!-- Dock -->
+  <div class="dock">
+    <img src="https://img.icons8.com/fluency/96/console.png" alt="Terminal" onclick="openApp('terminalApp')" />
+    <img src="https://img.icons8.com/fluency/96/artificial-intelligence.png" alt="IA" onclick="openApp('aiApp')" />
+    <img src="https://img.icons8.com/color/96/internet.png" alt="Navegador" onclick="openApp('browserApp')" />
+    <img src="https://files.catbox.moe/oipb7y.jpg" alt="Unlocked VALLE" onclick="openApp('valleApp')" style="border-radius: 15px;" />
+    <img src="https://img.icons8.com/fluency/96/filled-trash.png" alt="Trash" onclick="openApp('trashApp')" />
+  </div>  <!-- App Windows -->  <div class="window" id="terminalApp">
+    <div class="window-header" onmousedown="startDrag(event, this.parentElement)">
+      <span>Terminal</span>
+      <div class="controls">
+        <div class="btn close-btn" onclick="closeApp('terminalApp')"></div>
+        <div class="btn min-btn" onclick="minimizeApp('terminalApp')"></div>
+        <div class="btn max-btn" onclick="maximizeApp('terminalApp')"></div>
+      </div>
+    </div>
+    <div class="terminal-body" id="terminalOutput">
+      <p>Bienvenido a MacOS Web Terminal</p>
+    </div>
+    <input class="terminal-input" id="terminalInput" onkeydown="runCommand(event)" placeholder="Escribe un comando..." />
+  </div>  <div class="window" id="aiApp">
+    <div class="window-header" onmousedown="startDrag(event, this.parentElement)">
+      <span>IA</span>
+      <div class="controls">
+        <div class="btn close-btn" onclick="closeApp('aiApp')"></div>
+        <div class="btn min-btn" onclick="minimizeApp('aiApp')"></div>
+        <div class="btn max-btn" onclick="maximizeApp('aiApp')"></div>
+      </div>
+    </div>
+    <iframe src="https://www.chatgpt.com/" title="AI Assistant"></iframe>
+  </div>  <div class="window" id="browserApp">
+    <div class="window-header" onmousedown="startDrag(event, this.parentElement)">
+      <span>Navegador</span>
+      <div class="controls">
+        <div class="btn close-btn" onclick="closeApp('browserApp')"></div>
+        <div class="btn min-btn" onclick="minimizeApp('browserApp')"></div>
+        <div class="btn max-btn" onclick="maximizeApp('browserApp')"></div>
+      </div>
+    </div>
+    <input class="browser-input" placeholder="Escribe una URL y presiona Enter" onkeydown="loadURL(event, this)" />
+    <iframe id="browserFrame"></iframe>
+  </div>  <div class="window" id="valleApp">
+    <div class="window-header" onmousedown="startDrag(event, this.parentElement)">
+      <span>Unlocked VALLE</span>
+      <div class="controls">
+        <div class="btn close-btn" onclick="closeApp('valleApp')"></div>
+        <div class="btn min-btn" onclick="minimizeApp('valleApp')"></div>
+        <div class="btn max-btn" onclick="maximizeApp('valleApp')"></div>
+      </div>
+    </div>
+    <iframe src="https://unlockedvalle.github.io/unlockedvalle"></iframe>
+  </div>  <div class="window" id="trashApp">
+    <div class="window-header" onmousedown="startDrag(event, this.parentElement)">
+      <span>Papelera</span>
+      <div class="controls">
+        <div class="btn close-btn" onclick="closeApp('trashApp')"></div>
+        <div class="btn min-btn" onclick="minimizeApp('trashApp')"></div>
+        <div class="btn max-btn" onclick="maximizeApp('trashApp')"></div>
+      </div>
+    </div>
+    <div class="terminal-body">
+      <p>🗑 Nada por ahora.</p>
+    </div>
+  </div>  <script>
+    function openApp(id) {
+      const el = document.getElementById(id);
+      el.style.display = "flex";
+      el.style.zIndex = ++window.zIndexCount;
+    }
+
+    function closeApp(id) {
+      document.getElementById(id).style.display = "none";
+    }
+
+    function minimizeApp(id) {
+      document.getElementById(id).style.height = "30px";
+    }
+
+    function maximizeApp(id) {
+      const el = document.getElementById(id);
+      el.style.width = "100vw";
+      el.style.height = "100vh";
+      el.style.top = "0";
+      el.style.left = "0";
+    }
+
+    let offsetX, offsetY;
+    function startDrag(e, windowEl) {
+      offsetX = e.clientX - windowEl.offsetLeft;
+      offsetY = e.clientY - windowEl.offsetTop;
+      document.onmousemove = (e) => {
+        windowEl.style.left = (e.clientX - offsetX) + "px";
+        windowEl.style.top = (e.clientY - offsetY) + "px";
+      };
+      document.onmouseup = () => document.onmousemove = null;
+    }
+
+    const terminalOutput = document.getElementById("terminalOutput");
+    const terminalInput = document.getElementById("terminalInput");
+
+    function runCommand(event) {
+      if (event.key === "Enter") {
+        const cmd = terminalInput.value.trim();
+        const response = interpretCommand(cmd);
+        terminalOutput.innerHTML += `<p><strong>> ${cmd}</strong></p><p>${response}</p>`;
+        terminalOutput.scrollTop = terminalOutput.scrollHeight;
+        terminalInput.value = "";
+      }
+    }
+
+    function interpretCommand(cmd) {
+      const commands = {
+        help: "Comandos: help, joke, time, open valle, clear",
+        joke: "¿Por qué los programadores confunden Halloween y Navidad? Porque OCT 31 = DEC 25.",
+        time: new Date().toLocaleString(),
+        "open valle": "Abriendo Unlocked VALLE...",
+        clear: () => { terminalOutput.innerHTML = ""; return ""; }
+      };
+      return typeof commands[cmd] === "function" ? commands[cmd]() : commands[cmd] || "Comando no reconocido.";
+    }
+
+    function loadURL(event, input) {
+      if (event.key === "Enter") {
+        const url = input.value.trim();
+        if (url) {
+          const frame = document.getElementById("browserFrame");
+          frame.src = url.startsWith("http") ? url : "https://" + url;
+        }
+      }
+    }
+
+    window.zIndexCount = 1000;
+  </script></body>
+</html>
