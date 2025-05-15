@@ -1,0 +1,226 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Los primeros 200 dígitos de π</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto Mono', monospace;
+            background: linear-gradient(135deg, #2a1b3d 0%, #44318d 50%, #6649b8 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #e0e0e0;
+            overflow-x: auto;
+        }
+        .pi-digit {
+            transition: transform 0.2s ease, color 0.2s ease;
+        }
+        .pi-digit:hover {
+            transform: scale(1.5);
+            color: #ff6f61;
+        }
+        .pi-start {
+            color: #ffcc00;
+            font-weight: bold;
+        }
+        .container {
+            animation: fadeIn 1.2s ease-in-out;
+        }
+        @keyframes fadeIn {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        #copy-button, #submit-digits, #reset-game {
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+        #copy-button:hover, #submit-digits:hover, #reset-game:hover {
+            background-color: #ff6f61;
+            transform: scale(1.05);
+        }
+        #copy-button:active, #submit-digits:active, #reset-game:active {
+            transform: scale(0.95);
+        }
+        #digit-input {
+            background-color: #2d2d44;
+            color: #e0e0e0;
+            border: 1px solid #4a4a6b;
+            transition: border-color 0.3s ease;
+        }
+        #digit-input:focus {
+            border-color: #ff6f61;
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container max-w-4xl mx-auto p-6">
+        <!-- Sección de visualización de dígitos -->
+        <div class="text-center">
+            <h1 class="text-4xl md:text-6xl font-bold text-white mb-4">Los primeros 200 dígitos de π</h1>
+            <p class="text-lg md:text-xl text-gray-200 mb-8">La constante matemática en todo su esplendor</p>
+            <div id="pi-digits" class="text-xl md:text-2xl text-gray-100 bg-gray-900 bg-opacity-70 p-8 rounded-xl shadow-2xl">
+                <!-- Los dígitos se insertarán aquí con JavaScript -->
+            </div>
+            <button id="copy-button" class="mt-6 px-6 py-3 bg-indigo-600 text-white rounded-lg shadow-lg hover:bg-indigo-500 focus:outline-none">
+                Copiar dígitos de π
+            </button>
+        </div>
+
+        <!-- Sección Aprender -->
+        <div class="mt-12 text-center">
+            <h2 class="text-3xl md:text-4xl font-bold text-white mb-6">Aprender</h2>
+            <p class="text-lg md:text-xl text-gray-200 mb-4">Escribe los dígitos de π de dos en dos</p>
+            <div class="bg-gray-900 bg-opacity-70 p-8 rounded-xl shadow-2xl max-w-md mx-auto">
+                <p id="progress-text" class="text-lg text-gray-200 mb-4">Dígitos actuales: <span id="current-pair"></span></p>
+                <input id="digit-input" type="text" maxlength="2" placeholder="Escribe 2 dígitos" class="w-full p-3 rounded-lg text-center">
+                <button id="submit-digits" class="mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg shadow-lg hover:bg-indigo-500 focus:outline-none">
+                    Enviar
+                </button>
+                <button id="reset-game" class="mt-4 px-6 py-3 bg-red-600 text-white rounded-lg shadow-lg hover:bg-red-500 focus:outline-none hidden">
+                    Empezar de nuevo
+                </button>
+                <p id="feedback" class="mt-4 text-lg"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Primeros 200 dígitos de π (sin punto para facilitar el procesamiento)
+        const piDigits = "314159265358979323846264338327950288419716939937510582097494459230781640628620899862803482534211706798214808651328230664709384460955058223172535940812848111745028410270193852110555964462294895493038196442881097566593344612847564823378678316527120190914564856692346034861045432664821339360726024914127372458700660631558817488152092096282925409171536436789259036001133053054882046652138414695194151160943305727036575959195309218611738193261179310511854807446237996274956735188575272489122793818301194912";
+        const piDisplay = "3.14159265358979323846264338327950288419716939937510582097494459230781640628620899862803482534211706798214808651328230664709384460955058223172535940812848111745028410270193852110555964462294895493038196442881097566593344612847564823378678316527120190914564856692346034861045432664821339360726024914127372458700660631558817488152092096282925409171536436789259036001133053054882046652138414695194151160943305727036575959195309218611738193261179310511854807446237996274956735188575272489122793818301194912";
+
+        // Sección de visualización de dígitos
+        const piContainer = document.getElementById('pi-digits');
+        const digitsArray = piDisplay.split('');
+        digitsArray.forEach((digit, index) => {
+            const span = document.createElement('span');
+            span.className = 'pi-digit inline-block mx-0.5';
+            if (index === 0 || index === 1) {
+                span.className += ' pi-start';
+            }
+            span.textContent = digit;
+            piContainer.appendChild(span);
+            if ((index + 1) % 20 === 0 && index !== digitsArray.length - 1) {
+                piContainer.appendChild(document.createElement('br'));
+            }
+        });
+
+        // Botón de copiar
+        const copyButton = document.getElementById('copy-button');
+        copyButton.addEventListener('click', () => {
+            navigator.clipboard.writeText(piDisplay).then(() => {
+                copyButton.textContent = '¡Copiado!';
+                setTimeout(() => {
+                    copyButton.textContent = 'Copiar dígitos de π';
+                }, 2000);
+            }).catch(err => {
+                console.error('Error al copiar: ', err);
+                copyButton.textContent = 'Error al copiar';
+            });
+        });
+
+        // Sección Aprender
+        const digitInput = document.getElementById('digit-input');
+        const submitButton = document.getElementById('submit-digits');
+        const resetButton = document.getElementById('reset-game');
+        const feedback = document.getElementById('feedback');
+        const currentPair = document.getElementById('current-pair');
+        let currentIndex = 0;
+
+        // Mostrar los primeros dos dígitos (después del 3.)
+        currentPair.textContent = piDigits.slice(currentIndex, currentIndex + 2);
+
+        submitButton.addEventListener('click', () => {
+            const input = digitInput.value.trim();
+            if (input.length !== 2 || !/^\d{2}$/.test(input)) {
+                feedback.textContent = 'Por favor, escribe exactamente dos dígitos.';
+                feedback.className = 'mt-4 text-lg text-yellow-400';
+                return;
+            }
+
+            const correctPair = piDigits.slice(currentIndex, currentIndex + 2);
+            if (input === correctPair) {
+                feedback.textContent = '¡Correcto! Sigue adelante.';
+                feedback.className = 'mt-4 text-lg text-green-400';
+                currentIndex += 2;
+                if (currentIndex >= piDigits.length) {
+                    feedback.textContent = '¡Increíble! Has completado todos los dígitos.';
+                    submitButton.classList.add('hidden');
+                    resetButton.classList.remove('hidden');
+                    digitInput.disabled = true;
+                    return;
+                }
+                currentPair.textContent = piDigits.slice(currentIndex, currentIndex + 2);
+                digitInput.value = '';
+            } else {
+                feedback.textContent = 'Incorrecto. Debes empezar de nuevo.';
+                feedback.className = 'mt-4 text-lg text-red-400';
+                submitButton.classList.add('hidden');
+                resetButton.classList.remove('hidden');
+                digitInput.disabled = true;
+            }
+        });
+
+        resetButton.addEventListener('click', () => {
+            currentIndex = 0;
+            currentPair.textContent = piDigits.slice(currentIndex, currentIndex + 2);
+            feedback.textContent = '';
+            digitInput.value = '';
+            digitInput.disabled = false;
+            submitButton.classList.remove('hidden');
+            resetButton.classList.add('hidden');
+        });
+
+        // Permitir enviar con la tecla Enter
+        digitInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                submitButton.click();
+            }
+        });
+    </script>
+</body>
+</html>
